@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sorting Algorithm Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== Theme tokens (light default, dark via prefers-color-scheme) ===== */
+:root{
+  --bg:#f1f5f9;--card:#fff;--tx:#0f172a;--mu:#475569;--bd:#e2e8f0;
+  --ac:#4f46e5;--onac:#fff;--canvas:#f8fafc;
+  --bar:#94a3b8;--cmp:#d97706;--swp:#dc2626;--srt:#059669;--piv:#9333ea;
+  --sh:0 1px 2px rgba(15,23,42,.06),0 4px 14px rgba(15,23,42,.06);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0b1120;--card:#1e293b;--tx:#f1f5f9;--mu:#cbd5e1;--bd:#334155;
+  --ac:#818cf8;--onac:#0f172a;--canvas:#0f172a;
+  --bar:#64748b;--cmp:#fbbf24;--swp:#f87171;--srt:#34d399;--piv:#c084fc;
+  --sh:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 15px/1.5 Inter,system-ui,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 32px}
+h1{font-size:1.6rem;margin:0 0 4px;letter-spacing:-.02em}
+header p{margin:0 0 18px;color:var(--mu)}
+.grid{display:grid;grid-template-columns:1fr 300px;gap:16px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;box-shadow:var(--sh)}
+canvas{width:100%;height:clamp(220px,42vh,360px);display:block;background:var(--canvas);border-radius:10px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;list-style:none;padding:0;margin:12px 0;font-size:.85rem;color:var(--mu)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--canvas);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--mu)}
+.ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 14px;margin-bottom:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;font-weight:600;color:var(--mu)}
+select,input[type=range]{width:100%;accent-color:var(--ac)}
+select{padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:600 .9rem Inter,sans-serif;padding:9px 14px;border-radius:9px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer;transition:transform .12s,background .12s}
+button:hover:not(:disabled){transform:translateY(-1px);background:var(--canvas)}
+button.p{background:var(--ac);color:var(--onac);border-color:var(--ac)}
+button.p:hover:not(:disabled){background:var(--ac);filter:brightness(1.1)}
+button:disabled,select:disabled,input:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.snd{display:flex;flex-direction:row;align-items:center;gap:6px;font-weight:500}
+#status{margin-left:auto;font-size:.85rem;color:var(--mu)}
+#info h2{font-size:1.1rem;margin:0 0 6px}
+#info p{color:var(--mu);margin:0 0 12px}
+dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:.9rem}
+dt{color:var(--mu)}dd{margin:0;font-weight:600;text-align:right}
+footer{margin-top:16px;color:var(--mu);font-size:.82rem;text-align:center}
+kbd{background:var(--card);border:1px solid var(--bd);border-radius:5px;padding:0 5px}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Sorting Algorithm Visualizer</h1>
+  <p>Watch six classic sorts run one operation at a time.</p>
+</header>
+<div class="grid">
+  <section class="card" aria-label="Visualizer">
+    <canvas id="cv" role="img" aria-label="Array shown as vertical bars"></canvas>
+    <ul class="legend" aria-label="Color legend">
+      <li><i style="background:var(--bar)"></i>Unsorted</li>
+      <li><i style="background:var(--cmp)"></i>Comparing</li>
+      <li><i style="background:var(--swp)"></i>Swapped or written</li>
+      <li><i style="background:var(--piv)"></i>Pivot</li>
+      <li><i style="background:var(--srt)"></i>Sorted</li>
+    </ul>
+    <div class="stats">
+      <div class="stat"><b id="sCmp">0</b><span>Comparisons</span></div>
+      <div class="stat"><b id="sSw">0</b><span>Swaps / writes</span></div>
+      <div class="stat"><b id="sTime">0.00s</b><span>Elapsed</span></div>
+    </div>
+    <div class="ctrls">
+      <label>Algorithm
+        <select id="alg">
+          <option value="bubble">Bubble Sort</option><option value="selection">Selection Sort</option>
+          <option value="insertion">Insertion Sort</option><option value="merge">Merge Sort</option>
+          <option value="quick">Quick Sort</option><option value="heap">Heap Sort</option>
+        </select></label>
+      <label>Array preset
+        <select id="preset">
+          <option value="random">Random</option><option value="nearly">Nearly sorted</option>
+          <option value="reversed">Reversed</option><option value="few">Few unique values</option>
+        </select></label>
+      <label>Array size: <span id="sizeV">50</span>
+        <input id="size" type="range" min="10" max="150" value="50"></label>
+      <label>Speed
+        <input id="speed" type="range" min="0" max="100" value="55"></label>
+    </div>
+    <div class="btns">
+      <button id="bStart" class="p">Start</button>
+      <button id="bPause" disabled>Pause</button>
+      <button id="bStep">Step</button>
+      <button id="bReset">Reset</button>
+      <button id="bNew">New array</button>
+      <label class="snd"><input id="sound" type="checkbox"> Sound</label>
+      <span id="status" role="status" aria-live="polite">Ready</span>
+    </div>
+  </section>
+  <aside class="card" id="info" aria-label="Algorithm info">
+    <h2 id="iName"></h2>
+    <p id="iDesc"></p>
+    <dl>
+      <dt>Best time</dt><dd id="iBest"></dd>
+      <dt>Average time</dt><dd id="iAvg"></dd>
+      <dt>Worst time</dt><dd id="iWorst"></dd>
+      <dt>Space</dt><dd id="iSpace"></dd>
+      <dt>Stable</dt><dd id="iStable"></dd>
+    </dl>
+  </aside>
+</div>
+<footer>Shortcuts: <kbd>Space</kbd> start/pause · <kbd>N</kbd> new array · <kbd>S</kbd> step · <kbd>R</kbd> reset</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+
+/* ================= ALGORITHMS =================
+   Each is a generator that sorts the array IN PLACE and yields one
+   operation after each change:
+   ["c",i,j] compare  ["s",i,j] swap  ["w",i] write  ["d",i] final spot  ["p",i] pivot */
+function* bubble(a) {
+  const n = a.length;
+  for (let i = 0; i < n - 1; i++) {
+    let swapped = false;
+    for (let j = 0; j < n - 1 - i; j++) {
+      yield ["c", j, j + 1];
+      if (a[j] > a[j + 1]) { [a[j], a[j + 1]] = [a[j + 1], a[j]]; swapped = true; yield ["s", j, j + 1]; }
+    }
+    yield ["d", n - 1 - i];
+    if (!swapped) { for (let k = 0; k < n - 1 - i; k++) yield ["d", k]; return; }
+  }
+}
+function* selection(a) {
+  const n = a.length;
+  for (let i = 0; i < n; i++) {
+    let m = i;
+    for (let j = i + 1; j < n; j++) { yield ["c", m, j]; if (a[j] < a[m]) m = j; }
+    if (m !== i) { [a[i], a[m]] = [a[m], a[i]]; yield ["s", i, m]; }
+    yield ["d", i];
+  }
+}
+function* insertion(a) {
+  for (let i = 1; i < a.length; i++) {
+    for (let j = i; j > 0; j--) {
+      yield ["c", j - 1, j];
+      if (a[j - 1] <= a[j]) break;
+      [a[j - 1], a[j]] = [a[j], a[j - 1]]; yield ["s", j - 1, j];
+    }
+  }
+}
+function* merge(a) {
+  function* sort(l, r) {
+    if (l >= r) return;
+    const m = (l + r) >> 1;
+    yield* sort(l, m); yield* sort(m + 1, r);
+    const L = a.slice(l, m + 1), R = a.slice(m + 1, r + 1);
+    let i = 0, j = 0, k = l;
+    while (i < L.length && j < R.length) {
+      yield ["c", l + i, m + 1 + j];            // highlight the two ranges being merged
+      a[k] = L[i] <= R[j] ? L[i++] : R[j++]; yield ["w", k++];
+    }
+    while (i < L.length) { a[k] = L[i++]; yield ["w", k++]; }
+    while (j < R.length) { a[k] = R[j++]; yield ["w", k++]; }
+  }
+  yield* sort(0, a.length - 1);
+}
+function* quick(a) {                              // Lomuto partition, pivot = last item
+  function* sort(l, r) {
+    if (l > r) return;
+    if (l === r) { yield ["d", l]; return; }
+    const p = a[r]; yield ["p", r];
+    let i = l;
+    for (let j = l; j < r; j++) {
+      yield ["c", j, r];
+      if (a[j] < p) { if (i !== j) { [a[i], a[j]] = [a[j], a[i]]; yield ["s", i, j]; } i++; }
+    }
+    if (i !== r) { [a[i], a[r]] = [a[r], a[i]]; yield ["s", i, r]; }
+    yield ["d", i];
+    yield* sort(l, i - 1); yield* sort(i + 1, r);
+  }
+  yield* sort(0, a.length - 1);
+}
+function* heap(a) {
+  const n = a.length;
+  function* sift(i, end) {
+    while (true) {
+      const l = 2 * i + 1, r = l + 1; let m = i;
+      if (l < end) { yield ["c", m, l]; if (a[l] > a[m]) m = l; }
+      if (r < end) { yield ["c", m, r]; if (a[r] > a[m]) m = r; }
+      if (m === i) return;
+      [a[i], a[m]] = [a[m], a[i]]; yield ["s", i, m]; i = m;
+    }
+  }
+  for (let i = (n >> 1) - 1; i >= 0; i--) yield* sift(i, n);
+  for (let e = n - 1; e > 0; e--) {
+    [a[0], a[e]] = [a[e], a[0]]; yield ["s", 0, e]; yield ["d", e];
+    yield* sift(0, e);
+  }
+}
+
+const INFO = {
+  bubble:   { name: "Bubble Sort",    fn: bubble,    best: "O(n)",       avg: "O(n²)",      worst: "O(n²)",      space: "O(1)",     stable: "Yes",
+    desc: "Repeatedly walks through the list and swaps neighbors that are out of order. Large values bubble up to the end after each pass." },
+  selection:{ name: "Selection Sort", fn: selection, best: "O(n²)",      avg: "O(n²)",      worst: "O(n²)",      space: "O(1)",     stable: "No",
+    desc: "Finds the smallest remaining item and moves it to the front of the unsorted part. It makes very few swaps but always scans everything." },
+  insertion:{ name: "Insertion Sort", fn: insertion, best: "O(n)",       avg: "O(n²)",      worst: "O(n²)",      space: "O(1)",     stable: "Yes",
+    desc: "Builds the sorted list one item at a time by sliding each new item left into place. It is very fast on nearly sorted data." },
+  merge:    { name: "Merge Sort",     fn: merge,     best: "O(n log n)", avg: "O(n log n)", worst: "O(n log n)", space: "O(n)",     stable: "Yes",
+    desc: "Splits the list in halves, sorts each half, then merges them back in order. It is always O(n log n) but needs extra memory." },
+  quick:    { name: "Quick Sort",     fn: quick,     best: "O(n log n)", avg: "O(n log n)", worst: "O(n²)",      space: "O(log n)", stable: "No",
+    desc: "Picks a pivot, moves smaller items left and larger items right, then repeats on each side. It is usually very fast, but a bad pivot choice can slow it down." },
+  heap:     { name: "Heap Sort",      fn: heap,      best: "O(n log n)", avg: "O(n log n)", worst: "O(n log n)", space: "O(1)",     stable: "No",
+    desc: "Builds a max-heap, then keeps moving the largest item to the end and repairing the heap. It sorts in place with a guaranteed O(n log n)." }
+};
+
+/* ================= STATE ================= */
+const S = {
+  arr: [], orig: [], gen: null, state: "idle",   // idle | run | pause | done
+  cmp: 0, sw: 0, elapsed: 0, hi: [], hiType: "", pivot: -1, sorted: new Set(),
+  raf: 0, last: 0, acc: 0
+};
+const cv = $("cv"), ctx = cv.getContext("2d");
+
+/* ================= ARRAY GENERATION ================= */
+function makeArray() {
+  const n = +$("size").value, kind = $("preset").value, rnd = () => 1 + Math.floor(Math.random() * 100);
+  let a = Array.from({ length: n }, rnd);
+  if (kind === "nearly" || kind === "reversed") {
+    a.sort((x, y) => x - y);
+    if (kind === "reversed") a.reverse();
+    else for (let k = 0; k < Math.max(1, n * 0.05); k++) {
+      const i = Math.floor(Math.random() * n), j = Math.floor(Math.random() * n);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+  } else if (kind === "few") {
+    const lv = [15, 35, 55, 75, 95];
+    a = a.map(() => lv[Math.floor(Math.random() * lv.length)]);
+  }
+  S.orig = a.slice();
+  reset();
+}
+
+/* ================= RUN CONTROL ================= */
+function cancel() {                       // safely stops any run in progress
+  cancelAnimationFrame(S.raf); S.raf = 0; S.gen = null; S.state = "idle";
+}
+function reset() {
+  cancel();
+  S.arr = S.orig.slice();
+  S.cmp = S.sw = S.elapsed = 0; S.hi = []; S.hiType = ""; S.pivot = -1; S.sorted = new Set();
+  render(); ui("Ready");
+}
+function begin() { reset(); S.gen = INFO[$("alg").value].fn(S.arr); }
+function advance() {                      // apply exactly one operation
+  const r = S.gen.next();
+  if (r.done) { finish(); return false; }
+  const [t, x, y] = r.value;
+  S.hi = []; S.hiType = "";
+  if (t === "c") { S.cmp++; S.hi = [x, y]; S.hiType = "c"; }
+  else if (t === "s") { S.sw++; S.hi = [x, y]; S.hiType = "s"; }
+  else if (t === "w") { S.sw++; S.hi = [x]; S.hiType = "s"; }
+  else if (t === "d") S.sorted.add(x);
+  else if (t === "p") S.pivot = x;
+  return true;
+}
+function finish() {
+  const ok = S.arr.every((v, i) => i === 0 || S.arr[i - 1] <= v);   // self-check
+  S.arr.forEach((_, i) => S.sorted.add(i));
+  S.hi = []; S.pivot = -1; S.gen = null; S.state = "done";
+  render(); ui(ok ? "Sorted ✓" : "Error: result not sorted");
+}
+const rate = () => Math.pow(10, 0.5 + $("speed").value / 100 * 3);   // ops per second (~3 to ~3000)
+function schedule() { S.last = performance.now(); S.acc = 0; S.raf = requestAnimationFrame(loop); }
+function loop(ts) {
+  S.raf = 0;
+  if (S.state !== "run") return;
+  const dt = Math.min(ts - S.last, 100); S.last = ts;
+  S.elapsed += dt; S.acc += dt * rate() / 1000;
+  for (let n = 0; S.acc >= 1 && n < 300; n++, S.acc--) if (!advance()) return;
+  render();
+  S.raf = requestAnimationFrame(loop);
+}
+function start() {
+  if (S.state === "idle" || S.state === "done") begin();
+  if (S.state === "pause") { S.state = "run"; ui("Sorting…"); schedule(); return; }
+  S.state = "run"; ui("Sorting…"); schedule();
+}
+function togglePause() {
+  if (S.state === "run") { cancelAnimationFrame(S.raf); S.state = "pause"; ui("Paused"); }
+  else if (S.state === "pause") { S.state = "run"; ui("Sorting…"); schedule(); }
+}
+function stepOnce() {
+  if (S.state === "idle" || S.state === "done") { begin(); S.state = "pause"; }
+  if (S.state !== "pause") return;
+  if (advance()) { render(); ui("Paused"); }
+}
+
+/* ================= RENDERING ================= */
+function render() {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  const cs = getComputedStyle(document.documentElement), c = k => cs.getPropertyValue(k).trim();
+  const colors = { bar: c("--bar"), cmp: c("--cmp"), swp: c("--swp"), srt: c("--srt"), piv: c("--piv") };
+  const n = S.arr.length, bw = w / n, gap = bw > 6 ? 1.5 : 0.5;
+  for (let i = 0; i < n; i++) {
+    let col = colors.bar;
+    if (S.sorted.has(i)) col = colors.srt;
+    else if (S.hi.includes(i)) col = S.hiType === "c" ? colors.cmp : colors.swp;
+    else if (i === S.pivot) col = colors.piv;
+    const bh = S.arr[i] / 100 * (h - 6);
+    ctx.fillStyle = col; ctx.fillRect(i * bw + gap / 2, h - bh, Math.max(1, bw - gap), bh);
+  }
+  $("sCmp").textContent = S.cmp; $("sSw").textContent = S.sw;
+  $("sTime").textContent = (S.elapsed / 1000).toFixed(2) + "s";
+  if (S.hi.length) beep(S.arr[S.hi[0]]);
+}
+function ui(msg) {
+  const busy = S.state === "run" || S.state === "pause";
+  $("bStart").disabled = S.state === "run";
+  $("bPause").disabled = !busy;
+  $("bPause").textContent = S.state === "pause" ? "Resume" : "Pause";
+  $("size").disabled = busy; $("preset").disabled = busy;
+  if (msg) $("status").textContent = msg;
+}
+function showInfo() {
+  const d = INFO[$("alg").value];
+  $("iName").textContent = d.name; $("iDesc").textContent = d.desc;
+  $("iBest").textContent = d.best; $("iAvg").textContent = d.avg; $("iWorst").textContent = d.worst;
+  $("iSpace").textContent = d.space; $("iStable").textContent = d.stable;
+}
+
+/* ================= SOUND (off by default) ================= */
+let audio = null;
+function beep(v) {
+  if (!audio || audio.state !== "running") return;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.frequency.value = 200 + v * 9; g.gain.value = 0.03;
+  o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + 0.04);
+}
+
+/* ================= CONTROLS ================= */
+$("bStart").onclick = start;
+$("bPause").onclick = togglePause;
+$("bStep").onclick = stepOnce;
+$("bReset").onclick = reset;
+$("bNew").onclick = makeArray;
+$("alg").onchange = () => { showInfo(); reset(); };       // changing algorithm cancels the run
+$("preset").onchange = makeArray;
+$("size").oninput = () => { $("sizeV").textContent = $("size").value; makeArray(); };
+$("sound").onchange = e => {
+  if (e.target.checked) { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); }
+  else if (audio) audio.suspend();
+};
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.tagName === "SELECT") return;
+  const k = e.key.toLowerCase();
+  if (k === " ") { e.preventDefault(); S.state === "idle" || S.state === "done" ? start() : togglePause(); }
+  else if (k === "n") makeArray();
+  else if (k === "s") stepOnce();
+  else if (k === "r") reset();
+});
+window.addEventListener("resize", render);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+showInfo(); makeArray();
+})();
+</script>
+</body>
+</html>
